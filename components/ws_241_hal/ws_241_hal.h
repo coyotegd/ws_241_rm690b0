@@ -9,8 +9,14 @@
 #include "driver/i2c_master.h"
 #include "driver/spi_master.h"
 
+
+/**
+ * @brief Start the touch test task (draw on screen)
+ */
+void ws_241_hal_start_touch_test(void);
+
 #ifdef __cplusplus
-extern "C" {
+}
 #endif
 
 // --- Hardware Definitions ---

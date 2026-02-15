@@ -1,5 +1,6 @@
 #include "ws_241_hal.h"
 #include "rm690b0.h"
+#include "ft6336u.h"
 #include "tca9554.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
@@ -137,6 +138,7 @@ static void boot_button_click_cb(void *arg, void *usr_data) {
 
     ESP_LOGI(TAG, "Boot Button Pressed: Rotating Screen to %d", r);
     rm690b0_set_rotation(r);
+    ft6336u_set_rotation(r);
     // Explicitly clear screen to remove artifacts from previous orientation
     rm690b0_fill_screen(RM_COLOR_BLACK);
     rm690b0_run_test_pattern();
@@ -276,6 +278,9 @@ esp_err_t ws_241_hal_init(void) {
     }
     ESP_LOGI(TAG, "I2C Initialized");
 
+    // Initialize FT6336U Touch Controller
+    ft6336u_init(g_i2c_bus_handle);
+
     // 2. Initialize TCA9554 (IO Expander)
     tca9554_init(g_i2c_bus_handle); 
 
@@ -326,7 +331,7 @@ esp_err_t ws_241_hal_init(void) {
     
     button_handle_t btn_handle = NULL;
     esp_err_t err = iot_button_new_gpio_device(&btn_cfg, &btn_gpio_cfg, &btn_handle);
-    
+
     if (err == ESP_OK && btn_handle) {
         iot_button_register_cb(btn_handle, BUTTON_SINGLE_CLICK, NULL, boot_button_click_cb, NULL);
         ESP_LOGI(TAG, "Boot Button (GPIO0) Initialized for Rotation Control");
@@ -337,6 +342,35 @@ esp_err_t ws_241_hal_init(void) {
     ESP_LOGI(TAG, "HAL Initialization Complete");
     return ESP_OK;
 }
+
+void ws_241_hal_touch_test_task(void *pvParameters) {
+    uint16_t x = 0, y = 0;
+    const uint16_t BRUSH_SIZE = 4;
+    
+    ESP_LOGI(TAG, "Touch Test Task Started. Draw on screen!");
+
+    while (1) {
+        if (ft6336u_get_touch(&x, &y)) {
+            // Visualize touch with a small filled square
+            // Center the brush on the touch point
+            uint16_t px = (x > BRUSH_SIZE/2) ? (x - BRUSH_SIZE/2) : 0;
+            uint16_t py = (y > BRUSH_SIZE/2) ? (y - BRUSH_SIZE/2) : 0;
+            
+            // Draw
+            rm690b0_draw_rect(px, py, BRUSH_SIZE, BRUSH_SIZE, RM_COLOR_CYAN);
+            
+            // Log occasionally to avoid spam, or just remove for performance
+            // ESP_LOGI(TAG, "Touch: %d, %d", x, y);
+        }
+        // Small delay to allow other tasks to run (Yield)
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+void ws_241_hal_start_touch_test(void) {
+    xTaskCreate(ws_241_hal_touch_test_task, "touch_test", 4096, NULL, 5, NULL);
+}
+
 
 const rm690b0_config_t* ws_241_hal_get_display_config(void) {
     return &g_disp_conf;

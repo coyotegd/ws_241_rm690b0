@@ -33,7 +33,7 @@ We implemented a custom `rm_send_cmd` function using ESP-IDF's `SPI_TRANS_VARIAB
 - **Init Sequence**: We discarded the Waveshare official init code (which was flaky) and ported the specialized sequence from the working LilyGo driver.
 - **Rotation Tuning**: The display memory (`600x450`) is larger than the visible area.
   - **Issue**: Objects at `(0,0)` were often cut off or invisible.
-  - **Fix**: We empirically found the Y-offsets. In Landscape (Rotation 1), `offset_y = 18` must be applied to align the visible area with the memory buffer.
+  - **Fix**: We empirically found the offsets. In Landscape (Rotation 0), `offset_y = 16` must be applied to align the visible area with the memory buffer.
 
 ### 3. The "Red Box Line" Glitch
 
@@ -68,6 +68,23 @@ Unlike the LilyGo implementation where the display is powered directly, the Wave
   - Correct orientations (Landscape/Portrait).
   - High-speed block transfers using DMA.
   - 50x50 Test Pattern renders perfectly (Red, Green, Blue, White, Yellow).
+
+## Touch Controller (FT6336U)
+
+We have successfully implemented a driver for the FT6336U capacitive touch controller found on this board.
+
+- **Component**: `components/ft6336u`
+- **Interface**: I2C (Address `0x38`) on `IO47` (SDA) / `IO48` (SCL).
+- **Driver Integration**:
+  - Initialized automatically in `ws_241_hal_init`.
+  - Continuously polled in a background task (`touch_test_task`).
+  - **Rotation Sync**: The touch coordinates are automatically transformed to match the active display rotation (0-3).
+
+### Test & Usage
+
+- **Visual Feedback**: A small **Cyan (4x4)** square is drawn under your finger point.
+- **Dragging**: Moving your finger draws a continuous line.
+- **Orientation**: Change the screen rotation with the **BOOT** button; drawing near the corners proves the coordinate transformation logic is correct.
 
 ## Screen Rotation & Alignment
 
@@ -119,3 +136,7 @@ The firmware implements a robust "Soft Power" scheme using the onboard latching 
    - **Action**: Press the **Power Button** (Active Low trigger).
    - **Visual Feedback**: Screen fills with **EMERALD GREEN** for 1.5 seconds to confirm successful wake-up.
    - **Restore**: The main application interface (Test Pattern) is redrawn, and normal operation resumes.
+
+## External Resources
+
+- [Espressif Component Registry](https://components.espressif.com/) - Browse and discover ESP-IDF components.
