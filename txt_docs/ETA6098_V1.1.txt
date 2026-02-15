@@ -1,0 +1,416 @@
+ETA6098
+
+32V Input Standoff Voltage, 2.5A Switching Mode Battery Charger
+Ultra-Low 1uA Quiescent Current at BAT
+DESCRIPTION                                                                  FEATURES
+ETA6098 is a high efficiency, switching Li-Ion battery                          Ultra-Low 1uA Quiescent Current at BAT
+charger capable of delivering up to 2.5A of charging                            32V Input Standoff Voltage
+current to the battery. For charging, it uses a                                 Input Over Voltage Protection
+proprietary control scheme that eliminates the current                          60ns Fast OVP Transient Response
+sense resistor for conventional constant current                                Up to 94% Efficiency
+control, maximizing efficiency, reducing charging time                          Up to 2.5A Max Charging Current
+and reducing costs.                                                             No-Battery detection
+An OVP function protects the IC itself and its                                  No External Sense Resistor
+downstream system against input voltage surges.                                 DFN3x3-10 Package
+With this OVP function, the IC can stand off input                              RoHS Compliant
+voltage as high as 32V, making it an ideal solution for
+industrial applications.                                                     APPLICATIONS
+ETA6098 is suitable for charging a 4.2V Li-ion battery.                       Tablet, MID
+And ETA6098 is in DFN3x3-10 package.                                          Smart Phone
+
+
+TYPICAL APPLICATION
+
+          VIN                                                               PMID 2
+                                                             1   IN
+                                                                                                 22uF
+                           1uF                                             PGND 3
+                  VPW M                       R1                                                               -Li+ Batter y
+                                                             8   ISET                  2.2uH            10uF
+                Op tion al, to re al-tim e
+                ad just ch arg e c ur ren t                           ETA6098 SW 5                             +
+                                                     RISET
+                                                             7   AGND      BATS 6
+
+                                                             10 AGND                        1K
+                                                                           STAT 9
+
+
+
+
+ORDERING                                           PART No.                PACKAGE               TOP MARK                Pcs/Reel
+                                                   ETA6098D3K              DFN3x3-10             ETA6098                 5000
+INFORMATION                                                                                      YWW2L
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1                                                          1                        Empower, Transcend, Achieve!
+ETA6098
+
+PIN CONFIGURATION                                                           ABSOLUTE MAXIMUM RATINGS
+                                                                            (Note: Exceeding these limits may damage the device. Exposure to absolute
+                                                                            maximum rating conditions for long periods may affect device reliability.)
+                     Top View                                               IN Pin Voltage ...............................................–0.3V to 32V
+                                                                            All Other Pin Voltage ......................................–0.3V to 6V
+    IN     1                                  10   AGND
+                                                                            SW, PMID to ground current…………......Internally limited
+  PMID     2                                  9    STAT                     Operating Temperature Range …………...–40°C to 85°C
+                                                                            Storage Temperature Range …………..–55°C to 150°C
+ PGND      3
+                      ETA6098                 8    ISET
+                                                                            Thermal Resistance            θJC             θJA
+   NC      4                                  7    AGND
+                                                                            DFN3x3-10…………...…12……….50 .................... °C/W
+   SW      5
+                                  AGND        6    BATS                     Lead Temperature (Soldering, 10sec) ……….…….260°C
+                                                                            ESD HBM (Human Body Mode) ……..………….…….2KV
+                       DFN3x3-10                                            ESD CDM (Charged Device Mode) ……..…….…….1KV
+
+
+
+
+ELECTRICAL CHARACTERISTICS
+ (VIN = 5V, unless otherwise specified. Typical values are at TA = 25oC.)
+PARAMETER                                             CONDITIONS                                             MIN       TYP        MAX         UNITS
+INPUT
+Input Standoff Voltage                                                                                       32                                  V
+Input Range                                                                                                  4.5                    5.5          V
+Input UVLO Voltage                                    Rising, Hys=500mV                                                 4.5                      V
+Input OVP Voltage                                     Rising, Hys=320mV                                      5.89       6.08       6.27          V
+VPMID(VHOLD)                                          VHOLD=4.4V                                                        4.4                      V
+                                                      Switching                                                          5                      mA
+Input Operation Current
+                                                      No Switching                                                      900                     uA
+OVP
+Switch RDSON                                          VIN=5V, IOUT=1A, 25 oC                                             45         50          mΩ
+Discharge Resistance                                                                                                    197                      Ω
+Tpower-on                                             Power ON delay                                                     20                     ms
+BATTERY CHARGER
+Battery CV Voltage                                    IBAT =0mA, default                                     4.16       4.2        4.24          V
+Charger Restart Threshold                             From Charge Done to Fast Charge                                   160                     mV
+Battery Pre-Condition Voltage                         VBAT Falling, Hys=250mV                                           2.9                      V
+Pre-Condition Charge Current                                                                                            200                     mA
+Quiescent Current at BAT                              VBAT=3.6V                                                           1                     uA
+                                                      RISET =82KΩ                                                         2                      A
+Fast Charge Current
+                                                      RISET =150KΩ                                                      1.2                      A
+Charge Termination Current                                                                                              130                     mA
+Charge Termination Blanking time                                                                                         16                      S
+
+
+www.etasolution.com
+ETA6098_V1.1                                                         2                                  Empower, Transcend, Achieve!
+ETA6098
+PARAMETER                            CONDITIONS                                MIN      TYP     MAX      UNITS
+Highside Pmos Rdson                  ISW=500mA                                          120               mΩ
+Lowside Nmos Rdson                   ISW=500mA                                          100               mΩ
+ISET
+ISET Voltage                         Normal Charging                                    0.8                V
+ISET Voltage                         Stop Charging                               1                         V
+THERMAL PROTECTION
+Charging Thermal Regulation
+                                                                                         85                oC
+threshold
+Thermal Shutdown                     Rising, Hys=20oC                                   150                oC
+
+
+
+
+PIN DESCRIPTION
+
+    PIN #         NAME        DESCRIPTION
+      1             IN        Input pin. Bypass with a 1uF capacitor to GND.
+                              Connection point between internal OVP and charger. Bypass with a 22uF ceramic
+      2           PMID
+                              capacitor from PMID to GND. This capacitor should be close to the PMID pin.
+      3           PGND        Power Ground pin
+      4            NC         No Connection
+                              Switching Pin. Connect with an inductor between this pin and positive terminal of
+      5            SW
+                              battery
+                              Battery Voltage sense pin. Connect to the battery positive terminal with a separate
+      6           BATS
+                              sensing wire to avoid voltage drop to achieve accurate battery CV charging
+                              Charging Current setting pin. Connect a resistor between this pin and analog ground
+      8            ISET
+                              to set the current level.
+                              Charge status indication pin. When in charging, STAT is pulled low. And STAT
+      9            STAT
+                              become high-impedance when charging is completed.
+    7,10/
+                  AGND        Analog Ground.
+ Exposed pad
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1                                    3                           Empower, Transcend, Achieve!
+ETA6098
+
+TYPICAL CHARACTERISTICS
+(VIN=5V, TA=250C, unless otherwise specified)
+
+
+                                  ICHG Vs VBAT                                                                Efficiency Vs VBAT
+     2.5                                                                                 100%
+
+
+          2
+                                                                                             95%
+
+
+
+
+                                                                             Efficiency(%)
+     1.5
+ICHG(A)
+
+
+
+
+                                                                                             90%
+          1
+
+                                                                                             85%
+     0.5                VIN=5V,IBAT=2A
+                                                                                                                                    VIN=5V,IBAT=2A
+          0                                                                                  80%
+                0       1           2           3         4           5                            1   1.5    2         2.5    3      3.5             4             4.5
+                                         VBAT (V)                                                                       VBAT (V)
+
+
+
+
+                                 Complete charging cycle of a 10000mAH battery at 2A charge current
+              2.5                                                                                                                                 5
+
+                                                                                                                   IBAT=2A
+
+                2                                                                                                  10000mAh Battery               4.5
+
+
+
+
+              1.5                                                                                                                                 4
+
+
+
+
+                                                                                                                                                          VBAT(V)
+      ICHG(A)
+
+
+
+
+                1                                                                                                                                 3.5
+
+
+
+
+              0.5                                                                                                                                 3
+
+
+
+
+                0                                                                                                                                 2.5
+                    0       50          100         150   200          250                   300       350        400         450           500
+                                                                    time(minutes)
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1                                                    4                                            Empower, Transcend, Achieve!
+ETA6098
+
+FUNTIONAL DESCRITION
+ETA6098 is a switching Li-Ion battery charger capable of delivering up to 2.5A of charging current to the battery.
+With OVP function, the IC can stand off input voltage as high as 32V, making it an ideal solution for industrial
+applications. It features pre-charging, fast charging(CC) and constant voltage(CV) charging, end-of charging
+termination, and auto-recharge. Charge current can be set by an external resistor connecting to ISET pin, and charge
+status is output by STAT pin.
+CC/CV Regulation Loop
+There are CC/CV regulation loops built in ETA6098, with regulates either current or voltage as necessary to ensure
+fast and safe charging of the battery. In a normal charge cycle, this loop regulates the current to the value set by the
+external resistor at the ISET pin. Charging continues at this current until the battery cell voltage reaches the
+termination voltage. At this point, the CV loop takes over, and charge current is allowed ti decrease as necessary to
+maintain charging at the termination voltage.
+Precondition Charge
+A new charging cycle begins with the precondition state, and operation continues in this state until VBAT exceeds the
+precondition threshold voltage. When operating in precondition state, the cell is charged at 200mA. Once VBAT
+reaches the precondition threshold voltage, the state machine jumps to the fast charge state.
+Fast Charge
+If battery voltage is above preconditioning threshold, buck converter chargers battery with constant current. In fast
+charge state, the ETA6098 charges at the current set by external resistor connected at ISET pin. For example, a 2A
+fast charge current can be achieved by setting the resistor to be 82K. During a normal charge cycle, fast charge
+continues in CC mode until VBAT reaches the charge termination voltage, at which point the ETA6098 enters into top
+off state.
+Top off
+With the battery voltage approaches the end of charge (EOC) voltage (4.2V, preset internally), charge current
+decreases as charging continues. In the top off state, the cell is charged in constant voltage (CV) mode. During a
+normal charging cycle, charging proceeds until the charge current decreases below 130mA, the EOC threshold. And
+then, the state machine terminates the charge cycle and jumps to the EOC state.
+End of charge
+When charge current decreases to 130mA, the buck converter ceases and keep monitoring the battery voltage.
+Recharge
+When battery voltage drops by 160mV below the EOC voltage, the Buck converter is turned on again, and re-start
+the constant current charge cycle.
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1                                        5                            Empower, Transcend, Achieve!
+ETA6098
+
+ADJUSTING CHARGE CURRENT by PWM VOLTAGE
+
+
+
+                    VIN                                                                            PMID 2
+                                                                               1    IN
+                                                                                                                                22uF
+                                     1uF                                                           PGND 3
+                             Vpwm                          R1
+                                                                               8    ISET                                               10uF
+                                                                                                                                                 -Li+ Batter y
+                                                                                                                      2.2uH                      +
+                          Op tion al, to re al-tim e
+                          ad just ch arg e c ur ren t                                    ETA6098 SW 5
+                                                                      RISET
+                                                                               7    AGND           BATS 6
+
+                                                                              10 AGND                                     1K
+                                                                                                   STAT 9
+
+
+
+
+As given by above application circuit, one can real-time adjust the charge current by a PWM signal with different duty-
+cycle. The Vpwm is the RC filtered voltage of the PWM signal, and it will change linearly with the duty-cycle of the PWM
+signal. Followings are 2 examples of charge current’s relationship to VPWM. Please contact ETA engineers if one wants to
+have specific real-time charge current setting, the choosing of R1 and Rset value will be provided quickly.
+
+      Charge Current Vs. VPWM at R1=200K, RISET=160K                                                      Charge Current Vs. VPWM at R1=220K, RISET=130K
+           2                                                                                              2.5
+
+
+          1.5                                                                                                 2
+
+
+                                                                                                          1.5
+           1
+ICHG(A)
+
+
+
+
+                                                                                                    ICHG(A)
+
+
+
+
+                                                                                                              1
+
+          0.5
+                                                                                                          0.5
+
+
+           0                                                                                                  0
+                0    0.3                        0.6             0.9           1.2            1.5                  0       0.3           0.6           0.9        1.2   1.5
+                                                        VPWM(V)                                                                               VPWM(V)
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1                                                                             6                                      Empower, Transcend, Achieve!
+ETA6098
+
+FUNCTION BLOCK DIAGRAM
+
+           VIN                                                                                           PMID
+
+                                                                                PMID_UVLO
+                                              Charge Pump
+                                 Tj                             FB
+                           85°C CREF
+
+
+                               IREF
+          ISET
+
+                        PMID_DPMREF                                        CONVERTER
+                              PMID                                          CONTROL                       SW
+
+
+          BATS
+                               VREF
+
+                             BAT_FB
+
+
+                                                                                                         PGND
+                                 Tj             Thermal SHUTDOWN
+                          150°C CREF
+
+
+                                                                RECHARGE             IEOC
+
+
+
+          AGND                                                                                           STAT
+
+
+
+
+PCB GUIDELINES
+
+            VIN                                                                                            AGND
+                                                       1uF
+
+
+
+
+                                        VIN      1                                          10   AGND
+
+                                       PMID      2                                          9    STAT
+                            22uF
+
+     PGND                              PGND      3
+                                                                     ETA6098                8    ISET
+
+                 10uF                   NC       4                                          7    AGND
+
+                                        SW       5
+                                                                                    AGND
+                                                                                            6    BATS           VBAT
+                        2.2uH
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1                                                7                               Empower, Transcend, Achieve!
+ETA6098
+
+PACKAGE OUTLINE
+Package: DFN3x3-10
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1          8   Empower, Transcend, Achieve!
+ETA6098
+
+TAPE AND REEL INFORMATION
+
+
+
+
+www.etasolution.com
+ETA6098_V1.1                9   Empower, Transcend, Achieve!

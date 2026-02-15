@@ -71,6 +71,12 @@ void rm690b0_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t 
 void rm690b0_set_rotation(uint8_t rotation);
 
 /**
+ * @brief Get the current display rotation
+ * @return rotation 0-3
+ */
+uint8_t rm690b0_get_rotation(void);
+
+/**
  * @brief Run the built-in test pattern sequence (blocking)
  */
 void rm690b0_run_test_pattern(void);

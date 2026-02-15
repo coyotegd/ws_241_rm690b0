@@ -59,41 +59,44 @@ void rm690b0_set_rotation(uint8_t rotation) {
     uint8_t madctl = 0;
     s_rotation = rotation;
     switch (rotation) {
-        case 0: // Portrait (USB Left)
-            madctl = 0x00;
-            current_width = 450; 
-            current_height = 600;
-            offset_x = 0; offset_y = 0;
-            break;
-            
-        case 1: // Landscape (USB Bottom)
+        case 0: // Landscape (USB Bottom) - Default
             madctl = 0xA0; // MV, MY
             current_width = 600;
             current_height = 450;
-            // LilyGo offset Y=18 for "USB Bottom"
-            // If top-half of Top-Right Green square is missing, it means we are writing "above" visible area.
-            // Screen address 0,0 is physically off-screen.
-            // We need to shift everything DOWN (increase Y).
             offset_x = 0; 
-            offset_y = 18; 
+            offset_y = 16; 
             break;
-            
-        case 2: // Inverted Portrait
+
+        case 1: // Portrait (USB Right) - CCW 90
             madctl = 0xC0; // MY, MX
-            current_width = 450;
+            current_width = 450; 
             current_height = 600;
-            offset_x = 0; offset_y = 0;
+            offset_x = 14; 
+            offset_y = 0; 
             break;
             
-        case 3: // Inverted Landscape
+        case 2: // Landscape (USB Top) - CCW 180
             madctl = 0x60; // MV, MX
             current_width = 600;
             current_height = 450;
-            offset_x = 0; offset_y = 0;
+            offset_x = 0; 
+            offset_y = 14;
+            break;
+            
+        case 3: // Portrait (USB Left) - CCW 270
+            madctl = 0x00; // Native
+            current_width = 450;
+            current_height = 600;
+            offset_x = 16; 
+            offset_y = 0;
             break;
     }
-    ESP_LOGI(TAG, "Set Rotation %d: %dx%d (OffY: %d)", rotation, current_width, current_height, offset_y);
+    ESP_LOGI(TAG, "Set Rotation %d: %dx%d (OffX:%d OffY:%d)", rotation, current_width, current_height, offset_x, offset_y);
     rm_send_cmd(0x36, &madctl, 1);
+}
+
+uint8_t rm690b0_get_rotation(void) {
+    return s_rotation;
 }
 
 esp_err_t rm690b0_set_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
@@ -217,7 +220,11 @@ esp_err_t rm690b0_init(const rm690b0_config_t *config) {
     
     rm_send_cmd(0x11, NULL, 0); // Sleep Out
     vTaskDelay(pdMS_TO_TICKS(120));
-    
+
+    // Force default rotation to match software state or reset it
+    // If not set, mismatch between s_rotation and HW state can occur
+    rm690b0_set_rotation(0); 
+
     rm_send_cmd(0x29, NULL, 0); // Display On
     vTaskDelay(pdMS_TO_TICKS(120));
     
@@ -254,11 +261,15 @@ esp_err_t rm690b0_fill_screen(uint16_t color) {
         
         if (sent == 0) {
             t.base.flags |= SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
-            t.base.cmd = 0x32;
+            t.base.cmd = 0x32; // WRRAM
             t.base.addr = 0x002C00;
             t.command_bits = 8;
             t.address_bits = 24;
-        } 
+        } else {
+            t.base.flags |= SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+            t.command_bits = 0;
+            t.address_bits = 0;
+        }
         
         if (sent + pixels_to_send < pixel_count) {
              t.base.flags |= SPI_TRANS_CS_KEEP_ACTIVE;
@@ -303,7 +314,11 @@ void rm690b0_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t 
             t.base.addr = 0x002C00;
             t.command_bits = 8;
             t.address_bits = 24;
-        } 
+        } else {
+            t.base.flags |= SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+            t.command_bits = 0;
+            t.address_bits = 0;
+        }
         
         if (sent + n < count) t.base.flags |= SPI_TRANS_CS_KEEP_ACTIVE;
         
@@ -320,8 +335,8 @@ void rm690b0_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t 
 void rm690b0_run_test_pattern(void) {
     ESP_LOGI(TAG, "Running Test Pattern (LilyGo Logic)");
 
-    // Test in Rotation 1 (Landscape, USB Bottom hopefully)
-    rm690b0_set_rotation(1); 
+    // Test in current Rotation
+    // rm690b0_set_rotation(1); 
     
     // Clear display black first
     rm690b0_fill_screen(RM_COLOR_BLACK);

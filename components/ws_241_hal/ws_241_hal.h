@@ -6,7 +6,7 @@
 #include "qmi8658c.h"
 #include "pcf85063a.h"
 #include "ft6336u.h"
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 #include "driver/spi_master.h"
 
 #ifdef __cplusplus
@@ -36,6 +36,13 @@ extern "C" {
 
 // IO Expander (TCA9554) Interrupt Pin (from TCA to ESP32)
 #define WS_241_IO_EXP_INT       18
+
+// Battery Voltage ADC Pin
+#define WS_241_BAT_ADC_GPIO     18
+
+// Power Management Pins
+#define WS_241_PWR_LATCH_GPIO   16  // BAT_Control (Hold High to keep power on)
+#define WS_241_PWR_BTN_GPIO     15  // Key_BAT (Button Input)
 
 // --- Interface ---
 
@@ -73,6 +80,21 @@ esp_err_t ws_241_hal_set_display_power(bool enable);
  * @return Level of TE pin (0 or 1), or negative on error.
  */
 int ws_241_hal_get_te_signal(void);
+
+/**
+ * @brief Turn off system power by releasing the latch (GPIO16).
+ */
+void ws_241_hal_power_off(void);
+
+/**
+ * @brief Get the current battery voltage in millivolts.
+ * 
+ * Uses the ADC on GPIO18 with a voltage divider.
+ * 
+ * @param[out] voltage_mv Pointer to store the voltage in mV
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t ws_241_hal_get_battery_voltage(uint32_t *voltage_mv);
 
 #ifdef __cplusplus
 }

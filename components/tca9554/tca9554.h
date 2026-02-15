@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,10 +19,10 @@ extern "C" {
 
 /**
  * Initialize the TCA9554 driver.
- * @param i2c_num I2C port number.
+ * @param bus_handle I2C Master Bus Handle.
  * @return ESP_OK on success.
  */
-esp_err_t tca9554_init(i2c_port_t i2c_num);
+esp_err_t tca9554_init(i2c_master_bus_handle_t bus_handle);
 
 /**
  * Set the direction of a pin.

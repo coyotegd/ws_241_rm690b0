@@ -48,9 +48,16 @@ After getting the display running, we faced a persistent bug:
 
 Unlike the LilyGo implementation where the display is powered directly, the Waveshare board routes the display's power delivery through a **TCA9554** I2C IO Expander.
 
+## Hardware Notes
+
+- **Power Management (ETA6098)**: The board uses an ETA6098 for battery charging and power management. This component is **passive to the programmer**, meaning it requires no software configuration, I2C/SPI communication, or driver initialization. It operates autonomously based on its hardware configuration to handle battery charging and system power rails.
+
 - **Power Enable**: The display 3.3V/1.8V rails are controlled by **TCA9554 Pin 1 (EXIO1)**.
 - **Requirement**: The driver must initialize the I2C bus and the TCA9554 first, then drive EXIO1 HIGH to power on the AMOLED panel *before* attempting any SPI communication. Failing to do this results in a responsive SPI bus but a black, unpowered screen.
 - **Tearing Effect (TE)**: The TE pin is also routed to the TCA9554 (EXIO0) rather than a direct GPIO, requiring polling over I2C if VSYNC synchronization is needed.
+- **Status LEDs**:
+  - **Red LED**: Indicates the board is powered (USB or Battery).
+  - **Green LED**: Indicates Charging status. (On = Charging, Off = Charged).
 
 ## Final Status
 
@@ -62,8 +69,53 @@ Unlike the LilyGo implementation where the display is powered directly, the Wave
   - High-speed block transfers using DMA.
   - 50x50 Test Pattern renders perfectly (Red, Green, Blue, White, Yellow).
 
+## Screen Rotation & Alignment
+
+The driver supports 4 hardware-accelerated rotation modes, tuned specifically for this panel's memory map offsets to ensure edge-to-edge alignment without artifacts or cut-off pixels.
+
+**Cycle Logic**: Pressing the **BOOT Button (GPIO 0)** cycles through rotations Counter-Clockwise (0 -> 1 -> 2 -> 3).
+
+| Rotation ID     | Orientation | USB Position | MADCTL | Alignment Offsets | Notes                                     |
+| :-------------- | :---------- | :----------- | :----- | :---------------- | :---------------------------------------- |
+| **0 (Default)** | Landscape   | **Bottom**   | `0xA0` | `X=0, Y=16`       | Perfect 600x450 centering.                |
+| **1**           | Portrait    | **Right**    | `0xC0` | `X=14, Y=0`       | Tuned to fix left-shift and artifacts.    |
+| **2**           | Landscape   | **Top**      | `0x60` | `X=0, Y=14`       | Inverted Landscape.                       |
+| **3**           | Portrait    | **Left**     | `0x00` | `X=16, Y=0`       | Tuned to fix severe left-shift artifacts. |
+
+*Note: The RM690B0 controller's internal RAM (often 480x600 or similar) is larger than the 450x600 physical panel, necessitating these specific start offsets (`CASET`/`RASET`) to align the active window correctly.*
+
 ## Build & Flash
 
 ```bash
 idf.py build flash monitor
 ```
+
+## Power Management & Controls
+
+### Button Controls
+
+| Button    | GPIO    | Action                 | Behavior                                           |
+| :-------- | :------ | :--------------------- | :------------------------------------------------- |
+| **Power** | GPIO 15 | Short Press            | Available for Application Logic (Currently logged) |
+| **Power** | GPIO 15 | **Long Press (>1.5s)** | **Enter Light Sleep Mode**                         |
+| **Reset** | EN      | Press                  | Hard Hardware Reset                                |
+
+### Sleep & Wake Behavior
+
+The firmware implements a robust "Soft Power" scheme using the onboard latching circuit and ESP32 Light Sleep.
+
+1. **Power Latch (GPIO 16)**:
+   - The board's power management (ETA6098) is controlled by a latch circuit.
+   - **Boot**: Firmware immediately pulls **GPIO 16 HIGH** to keep the system powered.
+   - **Sleep**: Firmware maintains this HIGH state during sleep to prevent a full power cut.
+
+2. **Entering Sleep**:
+   - Hold **Power Button** for **1.5 seconds**.
+   - **Visual Feedback**: Screen turns **BLACK** immediately to indicate the command was received.
+   - **Action**: System enters ESP32 Light Sleep, turning off the display, Wi-Fi, and high-speed clocks.
+   - *Note: USB Serial connection will drop during sleep as potential power saving measure.*
+
+3. **Waking Up**:
+   - **Action**: Press the **Power Button** (Active Low trigger).
+   - **Visual Feedback**: Screen fills with **EMERALD GREEN** for 1.5 seconds to confirm successful wake-up.
+   - **Restore**: The main application interface (Test Pattern) is redrawn, and normal operation resumes.
