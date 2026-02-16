@@ -6,7 +6,8 @@ This project contains a comprehensive ESP-IDF implementation for the Waveshare 2
 
 Getting this display to work required significant reverse-engineering and debugging, as standard drivers produced visual artifacts, misalignment, or failed initialization. This document summarizes the journey and the final technical solution.
 
-> **Note**: For questions about repository naming and scope, see [REPOSITORY_NAMING_GUIDE.md](REPOSITORY_NAMING_GUIDE.md).
+> **Note**: For questions about repository naming and scope, see [REPOSITORY_NAMING_GUIDE.md](REPOSITORY_NAMING_GUIDE.md).  
+> **Note**: For help merging pull requests to main, see [HOW_TO_MERGE_PR.md](HOW_TO_MERGE_PR.md).
 
 ## The Challenge
 
