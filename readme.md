@@ -6,10 +6,6 @@ This project contains a comprehensive ESP-IDF implementation for the Waveshare 2
 
 Getting this display to work required significant reverse-engineering and debugging, as standard drivers produced visual artifacts, misalignment, or failed initialization. This document summarizes the journey and the final technical solution.
 
-> **Note**: For questions about repository naming and scope, see [REPOSITORY_NAMING_GUIDE.md](REPOSITORY_NAMING_GUIDE.md).
-
-> **Note**: For help merging pull requests to main, see [HOW_TO_MERGE_PR.md](HOW_TO_MERGE_PR.md).
-
 ## The Challenge
 
 We started with a working reference from a LilyGo T-Display S3 (same RM690B0 driver IC) but struggled to replicate it on the Waveshare hardware.
@@ -146,6 +142,7 @@ The firmware implements a robust "Soft Power" scheme using the onboard latching 
 This repository provides a complete hardware abstraction layer and driver suite for the Waveshare 2.41" AMOLED display board. The project is designed to be extensible, supporting additional features and components that complement the display hardware.
 
 ### Current Features
+
 - ✅ Display driver (RM690B0 via QSPI)
 - ✅ Touch controller (FT6336U via I2C)
 - ✅ Power management with sleep/wake
@@ -153,7 +150,9 @@ This repository provides a complete hardware abstraction layer and driver suite 
 - ✅ Button controls and interrupt handling
 
 ### Future Development Welcome
+
 The repository is open to contributions that enhance the Waveshare 2.41" AMOLED display experience:
+
 - Graphics libraries and UI frameworks
 - Example applications (games, utilities, demos)
 - Network connectivity features (Wi-Fi, BLE)
