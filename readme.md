@@ -159,8 +159,6 @@ The repository is open to contributions that enhance the Waveshare 2.41" AMOLED 
 - Additional sensor integrations
 - Extended power management features
 
-> **Questions about repository naming?** See [REPOSITORY_NAMING_GUIDE.md](REPOSITORY_NAMING_GUIDE.md) for guidance on when to extend this repository vs. creating a new one.
-
 ## External Resources
 
 - [Espressif Component Registry](https://components.espressif.com/) - Browse and discover ESP-IDF components.
