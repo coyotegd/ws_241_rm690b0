@@ -2,9 +2,13 @@
 
 ## Overview
 
-This project contains a working ESP-IDF implementation for the Waveshare 2.41" AMOLED Display (RM690B0 controller, ESP32-S3).
+This project contains a comprehensive ESP-IDF implementation for the Waveshare 2.41" AMOLED Display (RM690B0 controller, ESP32-S3), including display driver, touch controller, power management, and example applications.
 
 Getting this display to work required significant reverse-engineering and debugging, as standard drivers produced visual artifacts, misalignment, or failed initialization. This document summarizes the journey and the final technical solution.
+
+> **Note**: For questions about repository naming and scope, see [REPOSITORY_NAMING_GUIDE.md](REPOSITORY_NAMING_GUIDE.md).
+
+> **Note**: For help merging pull requests to main, see [HOW_TO_MERGE_PR.md](HOW_TO_MERGE_PR.md).
 
 ## The Challenge
 
@@ -136,6 +140,27 @@ The firmware implements a robust "Soft Power" scheme using the onboard latching 
    - **Action**: Press the **Power Button** (Active Low trigger).
    - **Visual Feedback**: Screen fills with **EMERALD GREEN** for 1.5 seconds to confirm successful wake-up.
    - **Restore**: The main application interface (Test Pattern) is redrawn, and normal operation resumes.
+
+## Repository Scope & Future Development
+
+This repository provides a complete hardware abstraction layer and driver suite for the Waveshare 2.41" AMOLED display board. The project is designed to be extensible, supporting additional features and components that complement the display hardware.
+
+### Current Features
+- ✅ Display driver (RM690B0 via QSPI)
+- ✅ Touch controller (FT6336U via I2C)
+- ✅ Power management with sleep/wake
+- ✅ Hardware abstraction layer (TCA9554 IO expander)
+- ✅ Button controls and interrupt handling
+
+### Future Development Welcome
+The repository is open to contributions that enhance the Waveshare 2.41" AMOLED display experience:
+- Graphics libraries and UI frameworks
+- Example applications (games, utilities, demos)
+- Network connectivity features (Wi-Fi, BLE)
+- Additional sensor integrations
+- Extended power management features
+
+> **Questions about repository naming?** See [REPOSITORY_NAMING_GUIDE.md](REPOSITORY_NAMING_GUIDE.md) for guidance on when to extend this repository vs. creating a new one.
 
 ## External Resources
 
