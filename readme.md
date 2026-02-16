@@ -159,6 +159,20 @@ The repository is open to contributions that enhance the Waveshare 2.41" AMOLED 
 - Additional sensor integrations
 - Extended power management features
 
+## Comparison with Other RM690B0 Implementations
+
+For a detailed technical comparison of this driver implementation with other RM690B0-based projects (such as the LilyGo T4-S3), see:
+
+📄 **[RM690B0 Driver Comparison Analysis](docs/RM690B0_COMPARISON_ANALYSIS.md)**
+
+This document covers:
+- Architecture and implementation philosophy differences
+- Initialization sequence comparisons
+- Data transfer method differences
+- Performance analysis (40 MHz vs 80 MHz, sync vs async)
+- Display offset calibration variations
+- Use case recommendations and migration paths
+
 ## External Resources
 
 - [Espressif Component Registry](https://components.espressif.com/) - Browse and discover ESP-IDF components.
