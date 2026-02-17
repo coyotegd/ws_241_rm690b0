@@ -9,8 +9,9 @@ This document provides a comprehensive comparison of the RM690B0 AMOLED display 
 3. **LilyGo T-Display S3** (Referenced as source inspiration)
 
 **Key Finding**: Despite using the same RM690B0 controller IC, the implementations differ significantly in:
+
 - Hardware abstraction approach
-- Initialization sequences  
+- Initialization sequences
 - Data transfer optimization strategies
 - Feature completeness and integration depth
 
@@ -20,13 +21,14 @@ This document provides a comprehensive comparison of the RM690B0 AMOLED display 
 
 ### 1.1 ws_241_rm690b0 (Waveshare 2.41" AMOLED)
 
-**Repository**: `coyotegd/ws_241_rm690b0`  
-**Hardware**: Waveshare 2.41" AMOLED Display Board  
-**Controller**: RM690B0 (450×600 AMOLED)  
-**Focus**: Standalone driver development with minimal abstraction  
+**Repository**: `coyotegd/ws_241_rm690b0`
+**Hardware**: Waveshare 2.41" AMOLED Display Board
+**Controller**: RM690B0 (450×600 AMOLED)
+**Focus**: Standalone driver development with minimal abstraction
 **Target Use Case**: Direct hardware control, testing, and educational purposes
 
 **Key Components**:
+
 - `rm690b0` - Display driver
 - `ft6336u` - Touch controller
 - `tca9554` - I2C IO expander (power/TE management)
@@ -37,13 +39,14 @@ This document provides a comprehensive comparison of the RM690B0 AMOLED display 
 
 ### 1.2 t4-s3_hal_bsp-lvgl (LilyGo T4-S3)
 
-**Repository**: `coyotegd/t4-s3_hal_bsp-lvgl`  
-**Hardware**: LilyGo T4-S3 Development Board  
-**Controller**: RM690B0 (450×600 AMOLED)  
-**Focus**: Production-ready LVGL integration with full BSP  
+**Repository**: `coyotegd/t4-s3_hal_bsp-lvgl`
+**Hardware**: LilyGo T4-S3 Development Board
+**Controller**: RM690B0 (450×600 AMOLED)
+**Focus**: Production-ready LVGL integration with full BSP
 **Target Use Case**: Application development platform with graphics framework
 
 **Key Components**:
+
 - `rm690b0` - Enhanced display driver with async operations
 - `cst226se` - Touch controller (different from Waveshare)
 - `sy6970` - PMIC (Power Management IC) via I2C
@@ -61,7 +64,7 @@ This document provides a comprehensive comparison of the RM690B0 AMOLED display 
 ### 2.1 File Structure
 
 | Aspect | ws_241_rm690b0 | t4-s3_hal_bsp-lvgl |
-|--------|----------------|---------------------|
+| :--- | :--- | :--- |
 | **Lines of Code** | ~360 lines (rm690b0.c) | ~716 lines (rm690b0.c) |
 | **Header Complexity** | Simple (89 lines) | Extended (100 lines) |
 | **API Functions** | 8 core functions | 18+ functions |
@@ -69,7 +72,7 @@ This document provides a comprehensive comparison of the RM690B0 AMOLED display 
 
 ### 2.2 Core Driver Features
 
-#### Waveshare ws_241_rm690b0
+#### Waveshare ws_241_rm690b0 (Features)
 
 ```c
 // Simple synchronous API
@@ -84,13 +87,14 @@ void rm690b0_run_test_pattern(void);
 ```
 
 **Characteristics**:
+
 - Blocking/synchronous operations
 - No callback system
 - Direct SPI transactions
 - Simple test pattern built-in
 - Manual configuration struct required
 
-#### T4-S3 t4-s3_hal_bsp-lvgl
+#### T4-S3 t4-s3_hal_bsp-lvgl (Features)
 
 ```c
 // Extended API with async operations and callbacks
@@ -102,7 +106,7 @@ void rm690b0_set_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
 // LVGL Integration
 void rm690b0_flush(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, const uint8_t *data);
-void rm690b0_flush_async(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, 
+void rm690b0_flush_async(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2,
                          const uint8_t *data, rm690b0_done_cb_t cb, void *user_ctx);
 
 // Extended Features
@@ -126,6 +130,7 @@ void rm690b0_register_power_callback(rm690b0_power_cb_t cb, void *user_ctx);
 ```
 
 **Characteristics**:
+
 - Async operations via FreeRTOS queue/task
 - Comprehensive callback system
 - LVGL-optimized flush functions
@@ -142,52 +147,13 @@ void rm690b0_register_power_callback(rm690b0_power_cb_t cb, void *user_ctx);
 ```c
 esp_err_t rm690b0_init(const rm690b0_config_t *config) {
     // 1. Store configuration
-    g_conf = *config;
-    
-    // 2. Add SPI device to existing bus (bus must be pre-initialized)
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 40 * 1000 * 1000,  // 40 MHz
-        .mode = 0,
-        .spics_io_num = config->cs_io,
-        .queue_size = 10,
-        .flags = SPI_DEVICE_HALFDUPLEX,
-    };
-    spi_bus_add_device(config->host_id, &devcfg, &spi_handle);
-    
-    // 3. Hardware Reset
-    gpio_set_level(config->rst_io, 1);
-    vTaskDelay(20);
-    gpio_set_level(config->rst_io, 0);
-    vTaskDelay(100);
-    gpio_set_level(config->rst_io, 1);
-    vTaskDelay(100);
-    
-    // 4. Init Commands (LilyGo-derived sequence)
-    rm_send_cmd(0xFE, (uint8_t[]){0x20}, 1);
-    rm_send_cmd(0x26, (uint8_t[]){0x0A}, 1);
-    rm_send_cmd(0x24, (uint8_t[]){0x80}, 1);
-    rm_send_cmd(0x5A, (uint8_t[]){0x51}, 1);
-    rm_send_cmd(0x5B, (uint8_t[]){0x2E}, 1);
-    rm_send_cmd(0xFE, (uint8_t[]){0x00}, 1);
-    rm_send_cmd(0x3A, (uint8_t[]){0x55}, 1); // COLMOD 16bit
-    rm_send_cmd(0xC2, NULL, 0);
-    vTaskDelay(10);
-    rm_send_cmd(0x35, (uint8_t[]){0x00}, 1); // TE ON
-    rm_send_cmd(0x51, (uint8_t[]){0x00}, 1); // Brightness 0
-    rm_send_cmd(0x11, NULL, 0); // Sleep Out
-    vTaskDelay(120);
-    
-    // 5. Set default rotation
-    rm690b0_set_rotation(0);
-    
-    // 6. Display On
-    rm_send_cmd(0x29, NULL, 0);
-    vTaskDelay(120);
+    /* Lines 145-186 omitted */
     rm_send_cmd(0x51, (uint8_t[]){0xFF}, 1); // Brightness Max
 }
 ```
 
 **Key Points**:
+
 - Requires external SPI bus initialization
 - Configuration passed via struct
 - LilyGo-based init sequence
@@ -199,62 +165,13 @@ esp_err_t rm690b0_init(const rm690b0_config_t *config) {
 ```c
 esp_err_t rm690b0_init(void) {
     // 1. Initialize SPI bus (handles bus setup internally)
-    spi_bus_config_t buscfg = {
-        .mosi_io_num = PIN_NUM_QSPI_D0,
-        .miso_io_num = PIN_NUM_QSPI_D1,
-        .sclk_io_num = PIN_NUM_QSPI_SCK,
-        .quadwp_io_num = PIN_NUM_QSPI_D2,
-        .quadhd_io_num = PIN_NUM_QSPI_D3,
-        .max_transfer_sz = 64 * 1024,
-    };
-    spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
-    
-    // 2. Add SPI device
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 80 * 1000 * 1000,  // 80 MHz!
-        .mode = 0,
-        .spics_io_num = PIN_NUM_QSPI_CS,
-        .queue_size = 10,
-        .flags = SPI_DEVICE_HALFDUPLEX,
-    };
-    spi_bus_add_device(SPI2_HOST, &devcfg, &spi_handle);
-    
-    // 3. Initialize GPIO pins (RST, PMIC_EN, TE)
-    gpio_reset_pin(PIN_NUM_LCD_RST);
-    gpio_set_direction(PIN_NUM_LCD_RST, GPIO_MODE_OUTPUT);
-    
-    gpio_reset_pin(PIN_NUM_PMIC_EN);
-    gpio_set_direction(PIN_NUM_PMIC_EN, GPIO_MODE_OUTPUT);
-    gpio_set_level(PIN_NUM_PMIC_EN, 1);  // Power on PMIC
-    vTaskDelay(50);
-    
-    // 4. Hardware Reset
-    gpio_set_level(PIN_NUM_LCD_RST, 1);
-    vTaskDelay(100);
-    gpio_set_level(PIN_NUM_LCD_RST, 0);
-    vTaskDelay(100);
-    gpio_set_level(PIN_NUM_LCD_RST, 1);
-    vTaskDelay(100);
-    
-    // 5. Init Commands (Similar to Waveshare but with variations)
-    rm690b0_send_cmd(0xFE, (uint8_t[]){0x20}, 1);
-    rm690b0_send_cmd(0x26, (uint8_t[]){0x0A}, 1);
-    // ... (similar sequence)
-    
-    // 6. Set default rotation
-    rm690b0_set_rotation(RM690B0_ROTATION_270);  // Different default!
-    
-    // 7. Display On
-    rm690b0_send_cmd(RM690B0_DISPON, NULL, 0);
-    vTaskDelay(120);
-    
-    // 8. Create async flush task for LVGL
-    s_flush_queue = xQueueCreate(FLUSH_QUEUE_SIZE, sizeof(flush_request_t));
+    /* Lines 202-253 omitted */
     xTaskCreatePinnedToCore(rm690b0_task, "rm690b0_flush", 4096, NULL, 5, &s_flush_task_handle, 0);
 }
 ```
 
 **Key Points**:
+
 - Self-contained initialization (manages SPI bus setup)
 - Hardcoded pin definitions
 - PMIC power management integration
@@ -270,7 +187,7 @@ esp_err_t rm690b0_init(void) {
 
 **Both implementations use the same core QSPI wrapper protocol** discovered through reverse-engineering:
 
-```
+```text
 Command Packet Structure:
 ┌──────────────┬──────────────────────┬─────────────────┐
 │ Opcode (8b)  │ Address (24b)        │ Data (variable) │
@@ -290,108 +207,51 @@ Both use ESP-IDF's `SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR` flags.
 
 ### 4.2 Pixel Data Transfer
 
-#### Waveshare ws_241_rm690b0
+#### Waveshare ws_241_rm690b0 (Data Transfer)
 
 ```c
 esp_err_t rm690b0_write_pixels(const uint16_t *data, size_t pixel_count) {
     size_t len_bytes = pixel_count * 2;
-    const size_t CHUNK_SIZE = 32 * 1024; 
-    size_t sent = 0;
-    
-    spi_device_acquire_bus(spi_handle, portMAX_DELAY);
-    
-    while (sent < len_bytes) {
-        size_t chunk = (len_bytes - sent > CHUNK_SIZE) ? CHUNK_SIZE : (len_bytes - sent);
-        
-        spi_transaction_ext_t t = {0};
-        t.base.flags = SPI_TRANS_MODE_QIO;
-        
-        if (sent == 0) {
-            // First chunk: Send RAMWR command
-            t.base.flags |= SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
-            t.base.cmd = 0x32;           // QSPI write command
-            t.base.addr = 0x002C00;      // RAMWR (0x2C) in address phase
-            t.command_bits = 8;
-            t.address_bits = 24;
-        } else {
-            // Subsequent chunks: Keep CS active
-            t.base.flags |= SPI_TRANS_CS_KEEP_ACTIVE; 
-        }
-        
-        if (sent + chunk < len_bytes) {
-            t.base.flags |= SPI_TRANS_CS_KEEP_ACTIVE; 
-        }
-        
-        t.base.length = chunk * 8;
-        t.base.tx_buffer = ((uint8_t*)data) + sent;
-        
-        spi_device_polling_transmit(spi_handle, (spi_transaction_t *)&t);
-        sent += chunk;
-    }
+    /* Lines 298-331 omitted */
     spi_device_release_bus(spi_handle);
 }
 ```
 
-**Method**: 
+**Method**:
+
 - **Synchronous polling** (`spi_device_polling_transmit`)
 - 32KB chunks
 - Blocks until complete
 
-#### T4-S3 t4-s3_hal_bsp-lvgl
+#### T4-S3 t4-s3_hal_bsp-lvgl (Data Transfer)
 
 **Synchronous Mode** (`rm690b0_flush`):
+
 ```c
 void rm690b0_flush(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, const uint8_t *data) {
     spi_device_acquire_bus(spi_handle, portMAX_DELAY);
-    rm690b0_set_window(x1, y1, x2, y2);
-    esp_rom_delay_us(50);  // Breather for IC
-    
-    size_t len = (size_t)(x2 - x1 + 1) * (y2 - y1 + 1) * 2;
-    spi_transaction_ext_t t = {0};
-    t.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_MODE_QIO;
-    t.base.cmd = 0x32;
-    t.base.addr = 0x002C00;
-    t.base.length = len * 8;
-    t.base.tx_buffer = data;
-    // ...
-    spi_device_polling_transmit(spi_handle, (spi_transaction_t *)&t);
+    /* Lines 346-358 omitted */
     spi_device_release_bus(spi_handle);
 }
 ```
 
 **Asynchronous Mode** (`rm690b0_flush_async`):
+
 ```c
-void rm690b0_flush_async(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, 
+void rm690b0_flush_async(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2,
                          const uint8_t *data, rm690b0_done_cb_t cb, void *user_ctx) {
-    flush_request_t req = {x1, y1, x2, y2, data, cb, user_ctx};
+    /* Lines 366-367 omitted */
     xQueueSend(s_flush_queue, &req, portMAX_DELAY);  // Send to worker task
 }
 
 // Dedicated worker task processes flush requests
 static void rm690b0_task(void *arg) {
-    while (1) {
-        if (xQueueReceive(s_flush_queue, &req, portMAX_DELAY)) {
-            // Set window
-            spi_device_acquire_bus(spi_handle, portMAX_DELAY);
-            // ... send CASET/RASET
-            
-            // Send pixels in chunks
-            while (sent < len_bytes) {
-                // ... chunk logic
-                spi_device_transmit(spi_handle, &t);  // Interrupt-based!
-                sent += chunk;
-            }
-            
-            spi_device_release_bus(spi_handle);
-            
-            // Notify LVGL
-            if (req.cb) req.cb(req.user_ctx);
-        }
-    }
+    while (1) {/* Lines 373-390 omitted */}
 }
 ```
 
 **Methods**:
+
 - **Synchronous**: Polling-based, single transfer
 - **Asynchronous**: FreeRTOS task + queue + interrupt-based SPI
 - Allows LVGL to continue rendering while display updates
@@ -399,7 +259,7 @@ static void rm690b0_task(void *arg) {
 ### 4.3 Performance Comparison
 
 | Aspect | Waveshare ws_241 | T4-S3 BSP-LVGL |
-|--------|------------------|----------------|
+| :--- | :--- | :--- |
 | **SPI Clock** | 40 MHz | 80 MHz |
 | **Transfer Mode** | Polling (blocking) | Polling + Interrupt (async) |
 | **LVGL Support** | No | Yes (dedicated) |
@@ -413,74 +273,30 @@ static void rm690b0_task(void *arg) {
 
 Both implementations discovered that the RM690B0 controller has internal memory larger than the physical display, requiring empirical offset tuning.
 
-### 5.1 Waveshare ws_241_rm690b0
+### 5.1 Waveshare ws_241_rm690b0 (Offsets)
 
 ```c
 void rm690b0_set_rotation(uint8_t rotation) {
     uint8_t madctl = 0;
-    s_rotation = rotation;
-    switch (rotation) {
-        case 0: // Landscape (USB Bottom)
-            madctl = 0xA0;  // MV, MY
-            current_width = 600;
-            current_height = 450;
-            offset_x = 0; 
-            offset_y = 16; 
-            break;
-        case 1: // Portrait (USB Right)
-            madctl = 0xC0;  // MY, MX
-            current_width = 450; 
-            current_height = 600;
-            offset_x = 14; 
-            offset_y = 0; 
-            break;
-        case 2: // Landscape (USB Top)
-            madctl = 0x60;  // MV, MX
-            current_width = 600;
-            current_height = 450;
-            offset_x = 0; 
-            offset_y = 14;
-            break;
-        case 3: // Portrait (USB Left)
-            madctl = 0x00;  // Native
-            current_width = 450;
-            current_height = 600;
-            offset_x = 16; 
-            offset_y = 0;
-            break;
-    }
+    /* Lines 421-452 omitted */
     rm_send_cmd(0x36, &madctl, 1);
 }
 ```
 
 **Offset Philosophy**: Full 450×600 display, offsets compensate for memory alignment.
 
-### 5.2 T4-S3 t4-s3_hal_bsp-lvgl
+### 5.2 T4-S3 t4-s3_hal_bsp-lvgl (Offsets)
 
 ```c
 void rm690b0_set_rotation(rm690b0_rotation_t rot) {
     switch (rot) {
-        case RM690B0_ROTATION_0: // USB Bottom (Landscape)
-            madctl = RM690B0_MADCTL_MV | RM690B0_MADCTL_MX;
-            current_width = 600;
-            current_height = 446;  // Reduced by 4px!
-            offset_x = 0; 
-            offset_y = 18; 
-            break;
-        case RM690B0_ROTATION_90: // USB Left (Portrait)
-            madctl = 0x00;
-            current_width = 446; 
-            current_height = 600;
-            offset_x = 18; 
-            offset_y = 0;
-            break;
-        // ... (different offsets for other rotations)
-    }
+        /* Lines 463-479 omitted */
     rm690b0_send_cmd(RM690B0_MADCTR, &madctl, 1);
 }
 ```
 
-**Offset Philosophy**: 
+**Offset Philosophy**:
+
 - Reduced display dimensions (446×600 instead of 450×600)
 - Larger offsets (18px vs 16px)
 - Different MADCTL values
@@ -489,13 +305,14 @@ void rm690b0_set_rotation(rm690b0_rotation_t rot) {
 ### 5.3 Offset Differences
 
 | Rotation | ws_241 (OffX, OffY) | T4-S3 (OffX, OffY) | ws_241 Dims | T4-S3 Dims |
-|----------|---------------------|---------------------|-------------|------------|
+| :--- | :--- | :--- | :--- | :--- |
 | 0 (USB Bottom) | (0, 16) | (0, 18) | 600×450 | 600×446 |
 | 1 (USB Right) | (14, 0) | (18, 0) | 450×600 | 446×600 |
 | 2 (USB Top) | (0, 14) | (0, 18) | 600×450 | 600×446 |
 | 3 (USB Left) | (16, 0) | (18, 0) | 450×600 | 446×600 |
 
 **Analysis**: T4-S3 uses more conservative offsets and smaller display dimensions, suggesting:
+
 - Different panel calibration
 - More aggressive artifact prevention
 - Possible different display vendor/batch
@@ -504,23 +321,26 @@ void rm690b0_set_rotation(rm690b0_rotation_t rot) {
 
 ## 6. Power Management
 
-### 6.1 Waveshare ws_241_rm690b0
+### 6.1 Waveshare ws_241_rm690b0 (Power)
 
 **Power Delivery**:
+
 - **TCA9554 EXIO1**: Controls display power rails (3.3V/1.8V)
 - **ETA6098**: Passive battery charging IC (no driver needed)
 - **GPIO16 Latch**: Keeps system powered during sleep
 
 **Power Functions**: None in rm690b0 driver (handled by HAL)
 
-### 6.2 T4-S3 t4-s3_hal_bsp-lvgl
+### 6.2 T4-S3 t4-s3_hal_bsp-lvgl (Power)
 
 **Power Delivery**:
+
 - **GPIO9 (PMIC_EN)**: Direct PMIC enable control
 - **SY6970**: Active PMIC with I2C driver
 - Full I2C control of charging, power rails, status monitoring
 
 **Power Functions** (in rm690b0 driver):
+
 ```c
 void rm690b0_sleep_mode(bool sleep);
 void rm690b0_display_power(bool on);
@@ -534,14 +354,15 @@ void rm690b0_register_power_callback(rm690b0_power_cb_t cb, void *user_ctx);
 
 ## 7. Touch Controller Integration
 
-### 7.1 Waveshare ws_241_rm690b0
+### 7.1 Waveshare ws_241_rm690b0 (Touch)
 
-**Touch IC**: FT6336U  
-**Integration**: Separate component (`ft6336u`)  
-**Communication**: I2C (0x38) via GPIO47/48  
+**Touch IC**: FT6336U
+**Integration**: Separate component (`ft6336u`)
+**Communication**: I2C (0x38) via GPIO47/48
 **Interrupt**: GPIO3 (direct GPIO interrupt)
 
 **Touch Functions** (ft6336u component):
+
 ```c
 esp_err_t ft6336u_init(const ft6336u_config_t *config);
 esp_err_t ft6336u_read_touch(ft6336u_touch_data_t *data);
@@ -550,11 +371,11 @@ bool ft6336u_is_touched(void);
 
 **Coordinate Transformation**: Handled in HAL (`ws_241_hal_transform_touch`)
 
-### 7.2 T4-S3 t4-s3_hal_bsp-lvgl
+### 7.2 T4-S3 t4-s3_hal_bsp-lvgl (Touch)
 
-**Touch IC**: CST226SE (Different IC!)  
-**Integration**: Separate component (`cst226se`)  
-**Communication**: I2C via dedicated touch driver  
+**Touch IC**: CST226SE (Different IC!)
+**Integration**: Separate component (`cst226se`)
+**Communication**: I2C via dedicated touch driver
 **Interrupt**: Different GPIO
 
 **Key Difference**: Completely different touch controller hardware and driver.
@@ -564,7 +385,7 @@ bool ft6336u_is_touched(void);
 ## 8. Advanced Features Comparison
 
 | Feature | ws_241_rm690b0 | t4-s3_hal_bsp-lvgl | Notes |
-|---------|----------------|---------------------|-------|
+| :--- | :--- | :--- | :--- |
 | **Async Operations** | ❌ No | ✅ Yes | T4-S3 has dedicated flush task |
 | **LVGL Integration** | ❌ No | ✅ Yes | T4-S3 has BSP + lv_ui component |
 | **Callback System** | ❌ No | ✅ Yes | VSYNC, error, power callbacks |
@@ -586,19 +407,22 @@ bool ft6336u_is_touched(void);
 ### 9.1 Waveshare ws_241_rm690b0: Educational & Minimal
 
 **Goals**:
+
 - Document the reverse-engineering journey
 - Provide minimal working implementation
 - Serve as educational reference
 - Enable hardware exploration and testing
 
 **Characteristics**:
+
 - Heavily commented with discovery notes
 - README documents all challenges and solutions
 - Minimal abstraction layers
 - Direct hardware control
 - Synchronous operations only
 
-**Target Audience**: 
+**Target Audience**:
+
 - Developers learning display driver development
 - Hardware reverse engineers
 - Projects requiring direct control
@@ -607,12 +431,14 @@ bool ft6336u_is_touched(void);
 ### 9.2 T4-S3 t4-s3_hal_bsp-lvgl: Production & Integration
 
 **Goals**:
+
 - Provide production-ready graphics platform
 - Full LVGL integration for UI development
 - Support complex applications (games, utilities, demos)
 - Enterprise-grade error handling and callbacks
 
 **Characteristics**:
+
 - Comprehensive API surface
 - Async operations for performance
 - LVGL BSP integration
@@ -621,6 +447,7 @@ bool ft6336u_is_touched(void);
 - Extended peripheral support
 
 **Target Audience**:
+
 - Application developers
 - Product teams building graphical applications
 - LVGL projects
@@ -633,7 +460,7 @@ bool ft6336u_is_touched(void);
 ### 10.1 Documentation
 
 | Aspect | ws_241_rm690b0 | t4-s3_hal_bsp-lvgl |
-|--------|----------------|---------------------|
+| :--- | :--- | :--- |
 | **README Quality** | ⭐⭐⭐⭐⭐ Excellent | ⭐⭐⭐⭐ Good |
 | **Code Comments** | ⭐⭐⭐⭐⭐ Extensive | ⭐⭐⭐ Moderate |
 | **Function Docs** | ⭐⭐⭐ Basic | ⭐⭐⭐⭐ Doxygen-style |
@@ -642,23 +469,27 @@ bool ft6336u_is_touched(void);
 ### 10.2 Error Handling
 
 **Waveshare**:
+
 ```c
 esp_err_t ret = spi_device_polling_transmit(spi_handle, &t);
 if (ret != ESP_OK) {
     ESP_LOGE(TAG, "SPI Transfer Error: %s", esp_err_to_name(ret));
 }
 ```
+
 - Basic error logging
 - No error recovery
 - No callback notification
 
 **T4-S3**:
+
 ```c
 esp_err_t ret = spi_device_polling_transmit(spi_handle, &t);
 if (ret != ESP_OK && s_error_cb) {
     s_error_cb(ret, s_error_ctx);  // Notify application
 }
 ```
+
 - Error logging + callback notification
 - Application can handle errors
 - Production-ready error paths
@@ -666,11 +497,13 @@ if (ret != ESP_OK && s_error_cb) {
 ### 10.3 Memory Management
 
 **Both implementations**:
+
 - Use `heap_caps_malloc(MALLOC_CAP_DMA)` for SPI buffers
 - Free memory after use
 - 32KB chunk strategy to avoid memory pressure
 
 **T4-S3 Additional**:
+
 - Async queue management
 - Task lifecycle management
 - Cleanup in `rm690b0_deinit()`
@@ -682,6 +515,7 @@ if (ret != ESP_OK && s_error_cb) {
 ### When to Use ws_241_rm690b0
 
 ✅ **Best For**:
+
 - Learning display driver development
 - Understanding QSPI protocol and reverse-engineering
 - Direct hardware control projects
@@ -691,6 +525,7 @@ if (ret != ESP_OK && s_error_cb) {
 - Future IMU/RTC integration (QMI8658C, PCF85063A)
 
 ❌ **Not Ideal For**:
+
 - Complex graphical applications
 - Production UI development
 - Applications requiring async operations
@@ -699,6 +534,7 @@ if (ret != ESP_OK && s_error_cb) {
 ### When to Use t4-s3_hal_bsp-lvgl
 
 ✅ **Best For**:
+
 - Production graphical applications
 - LVGL-based UI development
 - LilyGo T4-S3 hardware
@@ -708,6 +544,7 @@ if (ret != ESP_OK && s_error_cb) {
 - Applications requiring VSYNC synchronization
 
 ❌ **Not Ideal For**:
+
 - Learning low-level driver development
 - Projects with Waveshare hardware
 - Simple test applications
@@ -722,21 +559,24 @@ if (ret != ESP_OK && s_error_cb) {
 **Hardware Compatibility**: ❌ Not direct (different peripherals)
 
 **Code Changes Required**:
+
 1. **Initialization**:
+
    ```c
    // Before (Waveshare)
    rm690b0_config_t config = { /* pins */ };
    rm690b0_init(&config);
-   
+
    // After (T4-S3)
    rm690b0_init();  // No config, pins hardcoded
    ```
 
 2. **Pixel Transfer**:
+
    ```c
    // Before (Waveshare)
    rm690b0_write_pixels(pixel_data, count);
-   
+
    // After (T4-S3 - LVGL style)
    rm690b0_flush(x1, y1, x2, y2, pixel_data);
    // Or async
@@ -744,19 +584,21 @@ if (ret != ESP_OK && s_error_cb) {
    ```
 
 3. **Rotation**:
+
    ```c
    // Before (Waveshare)
    rm690b0_set_rotation(0);  // uint8_t
-   
+
    // After (T4-S3)
    rm690b0_set_rotation(RM690B0_ROTATION_0);  // enum
    ```
 
 4. **Power Management**:
+
    ```c
    // Before (Waveshare) - via HAL
    ws_241_hal_sleep();
-   
+
    // After (T4-S3) - driver API
    rm690b0_sleep_mode(true);
    ```
@@ -768,6 +610,7 @@ if (ret != ESP_OK && s_error_cb) {
 ### Similarities (Core Technology)
 
 ✅ **Shared**:
+
 - RM690B0 controller IC (450×600 AMOLED)
 - QSPI command wrapper protocol (`0x02 00 [CMD] 00`)
 - LilyGo-derived initialization sequence
@@ -779,6 +622,7 @@ if (ret != ESP_OK && s_error_cb) {
 ### Differences (Implementation)
 
 ❌ **Different**:
+
 - **SPI Speed**: 40 MHz (ws_241) vs 80 MHz (t4-s3)
 - **Transfer Mode**: Polling only vs Polling + Async
 - **Configuration**: Struct-based vs Hardcoded
@@ -799,13 +643,11 @@ if (ret != ESP_OK && s_error_cb) {
 The RM690B0 implementations across the Waveshare ws_241 and LilyGo T4-S3 platforms demonstrate:
 
 1. **Shared Core Technology**: Both use the same fundamental QSPI wrapper protocol discovered through reverse-engineering, proving the approach is portable across hardware variants.
-
-2. **Different Design Goals**: 
+2. **Different Design Goals**:
    - **Waveshare**: Educational, minimal, direct control
    - **T4-S3**: Production, LVGL, feature-complete
 
 3. **Hardware Differences Drive Software Differences**: Despite using the same display controller, different peripheral chips (power management, touch, IO expansion) result in fundamentally different HAL architectures.
-
 4. **Performance vs Simplicity Trade-off**:
    - Waveshare prioritizes clarity and direct control
    - T4-S3 prioritizes performance and integration
@@ -817,10 +659,12 @@ The RM690B0 implementations across the Waveshare ws_241 and LilyGo T4-S3 platfor
 ## 15. References
 
 ### Repositories
-- **ws_241_rm690b0**: https://github.com/coyotegd/ws_241_rm690b0
-- **t4-s3_hal_bsp-lvgl**: https://github.com/coyotegd/t4-s3_hal_bsp-lvgl
+
+- **ws_241_rm690b0**: <https://github.com/coyotegd/ws_241_rm690b0>
+- **t4-s3_hal_bsp-lvgl**: <https://github.com/coyotegd/t4-s3_hal_bsp-lvgl>
 
 ### Datasheets
+
 - RM690B0 Display Controller (Raydium)
 - FT6336U Touch Controller (FocalTech)
 - CST226SE Touch Controller (Hynitron)
@@ -829,11 +673,12 @@ The RM690B0 implementations across the Waveshare ws_241 and LilyGo T4-S3 platfor
 - ETA6098 Battery Charger (ETA Solutions)
 
 ### Framework Documentation
-- ESP-IDF SPI Master Driver: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
-- LVGL Documentation: https://docs.lvgl.io/
+
+- ESP-IDF SPI Master Driver: <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html>
+- LVGL Documentation: <https://docs.lvgl.io/>
 
 ---
 
-**Document Version**: 1.0  
-**Date**: February 16, 2026  
+**Document Version**: 1.1
+**Date**: February 17, 2026
 **Author**: Automated Analysis (GitHub Copilot)

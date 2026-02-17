@@ -1,178 +1,194 @@
-# Waveshare 2.41" AMOLED ESP-IDF Driver (RM690B0)
+# Waveshare 2.41" AMOLED ESP-IDF Driver V5.5 Stack
 
 ## Overview
 
-This project contains a comprehensive ESP-IDF implementation for the Waveshare 2.41" AMOLED Display (RM690B0 controller, ESP32-S3), including display driver, touch controller, power management, and example applications.
+This repository contains a full **ESP-IDF v5.5** implementation for the **Waveshare 2.41" AMOLED Display Board** (ESP32-S3). It features completely custom drivers written from scratch to leverage the modern `i2c_master` and `spi_master` APIs, abandoning legacy drivers entirely.
 
-Getting this display to work required significant reverse-engineering and debugging, as standard drivers produced visual artifacts, misalignment, or failed initialization. This document summarizes the journey and the final technical solution.
+| Component | Hardware | Controller | Interface |
+| :--- | :--- | :--- | :--- |
+| **MCU** | ESP32-S3 | - | - |
+| **Display** | 2.41" AMOLED | RM690B0 | QSPI (1-bit cmd, 4-bit data) |
+| **Touch** | Capacitive | FT6336U | I2C (0x38) |
+| **IMU** | 6-Axis | QMI8658C | I2C (0x6B) |
+| **RTC** | Real Time Clock | PCF85063A | I2C (0x51) |
+| **IO** | IO Expander | TCA9554 | I2C (0x20) |
+| **Power** | PMIC | ETA6098 | Hardware-managed (No SW) |
 
-## The Challenge
+All drivers are located in `components/` and are designed to be independent but orchestrated by the **HAL**.
 
-We started with a working reference from a LilyGo T-Display S3 (same RM690B0 driver IC) but struggled to replicate it on the Waveshare hardware.
+---
 
-- **Initial Drivers**: Generic `rm690b0` components failed or produced garbage.
-- **Porting Attempts**: Direct ports of Arduino libraries resulted in "tearing," wrong colors, or no image.
-- **Hardware Differences**: The Waveshare board uses a different interface configuration (QSPI/1-bit vs 4-bit) and command structure than standard SPI displays.
+## 🏗️ Hardware Abstraction Layer (HAL)
 
-## The Breakthroughs
+The `ws_241_hal` component centralizes initialization and provides a clean API for the application.
 
-### 1. The "Command Wrapper" Protocol (The Key Fix)
+### HAL Initialization
 
-Standard SPI drivers send commands (CMD) as 8-bit values and Data (DAT) as 8-bit values.
-The RM690B0 in this specific mode requires a **QSPI Command Wrapper**:
+```c
+#include "ws_241_hal.h"
 
-- Every standard command (e.g., `0x2A` Set Column) must be wrapped in a specific QSPI packet:
-  - **Opcode**: `0x02` (Single Byte)
-  - **Address**: `00 [CMD] 00` (24-bit address, where CMD is the actual instruction)
-  - **Data**: The parameters follow.
-
-We implemented a custom `rm_send_cmd` function using ESP-IDF's `SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR` to construct this packet structure bit-perfectly.
-
-### 2. Initialization & Rotations
-
-- **Init Sequence**: We discarded the Waveshare official init code (which was flaky) and ported the specialized sequence from the working LilyGo driver.
-- **Rotation Tuning**: The display memory (`600x450`) is larger than the visible area.
-  - **Issue**: Objects at `(0,0)` were often cut off or invisible.
-  - **Fix**: We empirically found the offsets. In Landscape (Rotation 0), `offset_y = 16` must be applied to align the visible area with the memory buffer.
-
-### 3. The "Red Box Line" Glitch
-
-After getting the display running, we faced a persistent bug:
-
-- **Symptom**: The first object drawn (Red Box at `0,0`) appeared as a squashed horizontal line, while all subsequent objects were perfect.
-- **Cause**: The `fill_screen` (Clear) function was not releasing the Chip Select (CS) line correctly (`SPI_TRANS_CS_KEEP_ACTIVE` remained set).
-- **Result**: The display interpreted the *next* command (Draw Red Box) as merely "more black pixels" for the previous clear command, ignoring the new coordinate instructions.
-- **Solution**: We fixed the transaction logic in `rm690b0.c` to explicitly release the bus and clear the CS flag at the end of every block operation (`fill_screen`, `draw_rect`).
-
-### 4. Hardware Dependency: TCA9554 IO Expander
-
-Unlike the LilyGo implementation where the display is powered directly, the Waveshare board routes the display's power delivery through a **TCA9554** I2C IO Expander.
-
-## Hardware Notes
-
-- **Power Management (ETA6098)**: The board uses an ETA6098 for battery charging and power management. This component is **passive to the programmer**, meaning it requires no software configuration, I2C/SPI communication, or driver initialization. It operates autonomously based on its hardware configuration to handle battery charging and system power rails.
-
-- **Power Enable**: The display 3.3V/1.8V rails are controlled by **TCA9554 Pin 1 (EXIO1)**.
-- **Requirement**: The driver must initialize the I2C bus and the TCA9554 first, then drive EXIO1 HIGH to power on the AMOLED panel *before* attempting any SPI communication. Failing to do this results in a responsive SPI bus but a black, unpowered screen.
-- **Tearing Effect (TE)**: The TE pin is also routed to the TCA9554 (EXIO0) rather than a direct GPIO, requiring polling over I2C if VSYNC synchronization is needed.
-- **Status LEDs**:
-  - **Red LED**: Indicates the board is powered (USB or Battery).
-  - **Green LED**: Indicates Charging status. (On = Charging, Off = Charged).
-
-## Final Status
-
-- **Interface**: QSPI (Quad SPI) @ 40MHz+
-- **Driver**: Custom `rm690b0` component (located in `components/rm690b0`).
-- **Features**:
-  - Full color (RGB565).
-  - Correct orientations (Landscape/Portrait).
-  - High-speed block transfers using DMA.
-  - 50x50 Test Pattern renders perfectly (Red, Green, Blue, White, Yellow).
-
-## Touch Controller (FT6336U)
-
-We have successfully implemented a driver for the FT6336U capacitive touch controller found on this board.
-
-- **Component**: `components/ft6336u`
-- **Interface**: I2C (Address `0x38`) on `IO47` (SDA) / `IO48` (SCL).
-- **Driver Integration**:
-  - Initialized automatically in `ws_241_hal_init`.
-  - Continuously polled in a background task (`touch_test_task`).
-  - **Rotation Sync**: The touch coordinates are automatically transformed to match the active display rotation (0-3).
-
-### Test & Usage
-
-- **Visual Feedback**: A small **Cyan (4x4)** square is drawn under your finger point.
-- **Dragging**: Moving your finger draws a continuous line.
-- **Orientation**: Change the screen rotation with the **BOOT** button; drawing near the corners proves the coordinate transformation logic is correct.
-
-## Screen Rotation & Alignment
-
-The driver supports 4 hardware-accelerated rotation modes, tuned specifically for this panel's memory map offsets to ensure edge-to-edge alignment without artifacts or cut-off pixels.
-
-**Cycle Logic**: Pressing the **BOOT Button (GPIO 0)** cycles through rotations Counter-Clockwise (0 -> 1 -> 2 -> 3).
-
-| Rotation ID     | Orientation | USB Position | MADCTL | Alignment Offsets | Notes                                     |
-| :-------------- | :---------- | :----------- | :----- | :---------------- | :---------------------------------------- |
-| **0 (Default)** | Landscape   | **Bottom**   | `0xA0` | `X=0, Y=16`       | Perfect 600x450 centering.                |
-| **1**           | Portrait    | **Right**    | `0xC0` | `X=14, Y=0`       | Tuned to fix left-shift and artifacts.    |
-| **2**           | Landscape   | **Top**      | `0x60` | `X=0, Y=14`       | Inverted Landscape.                       |
-| **3**           | Portrait    | **Left**     | `0x00` | `X=16, Y=0`       | Tuned to fix severe left-shift artifacts. |
-
-*Note: The RM690B0 controller's internal RAM (often 480x600 or similar) is larger than the 450x600 physical panel, necessitating these specific start offsets (`CASET`/`RASET`) to align the active window correctly.*
-
-## Build & Flash
-
-```bash
-idf.py build flash monitor
+void app_main(void) {
+    // Initializes Bus, I2C devices, Display, and Power
+    if (ws_241_hal_init() == ESP_OK) {
+        ESP_LOGI("APP", "System Ready");
+    }
+}
 ```
 
-## Power Management & Controls
+### HAL Features
 
-### Button Controls
+| Function | Description |
+| :--- | :--- |
+| `ws_241_hal_get_imu_data(qmi_data_t *data)` | Reads latest Accel/Gyro data from QMI8658C |
+| `ws_241_hal_start_touch_test()` | Launches a FreeRTOS task to draw on screen with touch |
+| **Automatic Power Management** | Handles Display Power (via TCA9554) and Keep-Alive Latch (GPIO16) |
 
-| Button    | GPIO    | Action                 | Behavior                                           |
-| :-------- | :------ | :--------------------- | :------------------------------------------------- |
-| **Power** | GPIO 15 | Short Press            | Available for Application Logic (Currently logged) |
-| **Power** | GPIO 15 | **Long Press (>1.5s)** | **Enter Light Sleep Mode**                         |
-| **Reset** | EN      | Press                  | Hard Hardware Reset                                |
+---
 
-### Sleep & Wake Behavior
+## 📺 RM690B0 (Display Driver)
 
-The firmware implements a robust "Soft Power" scheme using the onboard latching circuit and ESP32 Light Sleep.
+A highly optimized QSPI driver for the AMOLED panel.
 
-1. **Power Latch (GPIO 16)**:
-   - The board's power management (ETA6098) is controlled by a latch circuit.
-   - **Boot**: Firmware immediately pulls **GPIO 16 HIGH** to keep the system powered.
-   - **Sleep**: Firmware maintains this HIGH state during sleep to prevent a full power cut.
+- **Resolution**: 600x450 (with offsets handled internally)
+- **Color Depth**: 16-bit RGB565 (Big Endian)
+- **Frame Buffer**: Supports partial updates and direct drawing.
 
-2. **Entering Sleep**:
-   - Hold **Power Button** for **1.5 seconds**.
-   - **Visual Feedback**: Screen turns **BLACK** immediately to indicate the command was received.
-   - **Action**: System enters ESP32 Light Sleep, turning off the display, Wi-Fi, and high-speed clocks.
-   - *Note: USB Serial connection will drop during sleep as potential power saving measure.*
+### Display API Reference
 
-3. **Waking Up**:
-   - **Action**: Press the **Power Button** (Active Low trigger).
-   - **Visual Feedback**: Screen fills with **EMERALD GREEN** for 1.5 seconds to confirm successful wake-up.
-   - **Restore**: The main application interface (Test Pattern) is redrawn, and normal operation resumes.
+```c
+#include "rm690b0.h"
 
-## Repository Scope & Future Development
+// Initialize (Done by HAL automatically)
+rm690b0_init(&config);
 
-This repository provides a complete hardware abstraction layer and driver suite for the Waveshare 2.41" AMOLED display board. The project is designed to be extensible, supporting additional features and components that complement the display hardware.
+// Clear Screen
+rm690b0_fill_screen(0x0000); // Black
 
-### Current Features
+// Draw Rectangle
+rm690b0_fill_rect(x, y, w, h, 0xF800); // Red
 
-- ✅ Display driver (RM690B0 via QSPI)
-- ✅ Touch controller (FT6336U via I2C)
-- ✅ Power management with sleep/wake
-- ✅ Hardware abstraction layer (TCA9554 IO expander)
-- ✅ Button controls and interrupt handling
+// Draw Buffer (Bitmap)
+rm690b0_draw_bitmap(x, y, w, h, buffer);
 
-### Future Development Welcome
+// Set Brightness (0-255)
+rm690b0_set_brightness(200);
 
-The repository is open to contributions that enhance the Waveshare 2.41" AMOLED display experience:
+// Screen Control
+rm690b0_display_on();
+rm690b0_display_off();
+```
 
-- Graphics libraries and UI frameworks
-- Example applications (games, utilities, demos)
-- Network connectivity features (Wi-Fi, BLE)
-- Additional sensor integrations
-- Extended power management features
+---
 
-## Comparison with Other RM690B0 Implementations
+## 🕒 PCF85063A (RTC Driver)
 
-For a detailed technical comparison of this driver implementation with other RM690B0-based projects (such as the LilyGo T4-S3), see:
+A full-featured driver for the ultra-low power Real-Time Clock.
 
-📄 **[RM690B0 Driver Comparison Analysis](docs/RM690B0_COMPARISON_ANALYSIS.md)**
+### RTC Time Management
 
-This document covers:
-- Architecture and implementation philosophy differences
-- Initialization sequence comparisons
-- Data transfer method differences
-- Performance analysis (40 MHz vs 80 MHz, sync vs async)
-- Display offset calibration variations
-- Use case recommendations and migration paths
+```c
+#include "pcf85063a.h"
 
-## External Resources
+struct tm t;
+// Get Time
+pcf85063a_get_time(&t);
+printf("Time: %02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
 
-- [Espressif Component Registry](https://components.espressif.com/) - Browse and discover ESP-IDF components.
+// Set Time
+t.tm_hour = 12; t.tm_min = 0; t.tm_sec = 0;
+pcf85063a_set_time(&t);
+```
+
+### RTC Advanced Features
+
+| Feature | Function | Description |
+| :--- | :--- | :--- |
+| **Alarm** | `pcf85063a_set_alarm()` | Trigger interrupt at specific Second, Minute, Hour, Day, or Weekday. Supports wildcards (-1). |
+| **Timer** | `pcf85063a_set_timer()` | 8-bit Countdown Timer (4Hz to 1/60Hz clock source). Triggers INT on zero. |
+| **Clock Out** | `pcf85063a_set_clkout()` | Output 1Hz - 32kHz square wave on CLK pin. |
+| **RAM** | `pcf85063a_read_ram()` | Read/Write 1 byte of battery-backed RAM. |
+
+---
+
+## 🧭 QMI8658C (IMU Driver)
+
+Driver for the 6-Axis Inertial Measurement Unit (Accel + Gyro).
+
+- **Standard**: I2C (Driver uses I2C)
+- **Orientation**: ENU (East-North-Up) convention applied.
+
+### IMU API Reference
+
+```c
+#include "qmi8658c.h"
+
+// Configuration
+qmi8658c_init(i2c_handle);
+
+// Read Data
+qmi_data_t data;
+qmi8658c_read_data(&data);
+
+printf("Acc: %.2f, %.2f, %.2f g\n", data.acc_x, data.acc_y, data.acc_z);
+printf("Gyr: %.2f, %.2f, %.2f dps\n", data.gyr_x, data.gyr_y, data.gyr_z);
+```
+
+---
+
+## 👆 FT6336U (Touch Driver)
+
+Capacitive touch controller driver.
+
+### Touch API Reference
+
+```c
+#include "ft6336u.h"
+
+// Check for touch
+if (ft6336u_read_touch_data(&x, &y, &pressed)) {
+    if (pressed) {
+        printf("Touch at %d, %d\n", x, y);
+    }
+}
+```
+
+---
+
+## 🔌 TCA9554 (IO Expander)
+
+Controls auxiliary power lines and interrupts.
+*Used internally by HAL to power on the Display (PWR_EN).*
+
+### IO API Reference
+
+```c
+#include "tca9554.h"
+
+// Set Pin Direction (Input/Output)
+tca9554_set_direction(PIN_NUM, TCA_OUTPUT);
+
+// Write Level
+tca9554_set_level(PIN_NUM, 1);
+
+// Read Level
+int level = tca9554_get_level(PIN_NUM);
+```
+
+---
+
+## Pinout Mapping (ESP32-S3)
+
+| Function | GPIO | Notes |
+| :--- | :--- | :--- |
+| **I2C SDA** | 47 | Shared bus |
+| **I2C SCL** | 48 | Shared bus |
+| **QSPI CS** | 9 | Display Chip Select |
+| **QSPI CLK** | 10 | Display Clock |
+| **QSPI D0** | 11 | Data 0 |
+| **QSPI D1** | 12 | Data 1 |
+| **QSPI D2** | 13 | Data 2 |
+| **QSPI D3** | 14 | Data 3 |
+| **Display RST** | 21 | Display Reset |
+| **Power Latch** | 16 | Hold HIGH to keep power on |
+| **Power Btn** | 15 | Input, Active Low |
+| **IO INT** | 18 | Interrupt from TCA9554 |

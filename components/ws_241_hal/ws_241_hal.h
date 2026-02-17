@@ -15,6 +15,13 @@
  */
 void ws_241_hal_start_touch_test(void);
 
+/**
+ * @brief Get the latest IMU data from QMI8658C
+ * @param[out] data Pointer to qmi_data_t structure to fill
+ * @return ESP_OK on success
+ */
+esp_err_t ws_241_hal_get_imu_data(qmi_data_t *data);
+
 #ifdef __cplusplus
 }
 #endif

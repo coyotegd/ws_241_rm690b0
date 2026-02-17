@@ -2,15 +2,16 @@
 #include "rm690b0.h"
 #include "ft6336u.h"
 #include "tca9554.h"
+#include "qmi8658c.h" // Local component
 #include "driver/gpio.h"
-#include "driver/i2c_master.h"
+#include "driver/i2c_master.h" // New Driver
 #include "esp_adc/adc_oneshot.h"
 #include "esp_sleep.h"
 #include "esp_log.h"
 #include "driver/uart.h"
-#include "driver/rtc_io.h" /* Included for sleep GPIO functions */
-#include "iot_button.h" /* Espressif Button Component */
-#include "button_gpio.h" /* Espressif Button Component (GPIO Specific) */
+#include "driver/rtc_io.h"
+#include "iot_button.h"
+#include "button_gpio.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -148,6 +149,9 @@ static adc_oneshot_unit_handle_t g_adc_handle = NULL;
 static const adc_channel_t g_adc_channel = ADC_CHANNEL_7; // GPIO18 is ADC2_CH7
 
 static i2c_master_bus_handle_t g_i2c_bus_handle = NULL;
+// static const i2c_port_t g_i2c_port = I2C_NUM_0; 
+// static qmi8658c_data_t g_imu_data;
+// static i2c_dev_t g_qmi_dev; // QMI8658C device descriptor
 
 static esp_err_t i2c_bus_init(void) {
     if (g_i2c_bus_handle != NULL) return ESP_OK;
@@ -160,7 +164,19 @@ static esp_err_t i2c_bus_init(void) {
         .glitch_ignore_cnt = 7,
         .flags.enable_internal_pullup = true,
     };
-    return i2c_new_master_bus(&i2c_mst_config, &g_i2c_bus_handle);
+    esp_err_t ret = i2c_new_master_bus(&i2c_mst_config, &g_i2c_bus_handle);
+    if (ret != ESP_OK) return ret;
+
+    // Optional: Scan I2C Bus for debugging
+    ESP_LOGI(TAG, "Scanning I2C Bus...");
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        if (i2c_master_probe(g_i2c_bus_handle, addr, 50) == ESP_OK) {
+            ESP_LOGI(TAG, "Found I2C Device at 0x%02X", addr);
+        }
+    }
+    ESP_LOGI(TAG, "I2C Scan Complete");
+
+    return ESP_OK;
 }
 
 static esp_err_t spi_bus_init(void) {
@@ -278,11 +294,42 @@ esp_err_t ws_241_hal_init(void) {
     }
     ESP_LOGI(TAG, "I2C Initialized");
 
+    // Give peripherals time to power up and stabilize
+    ESP_LOGI(TAG, "Waiting for I2C devices to stabilize...");
+    vTaskDelay(pdMS_TO_TICKS(200));
+
     // Initialize FT6336U Touch Controller
     ft6336u_init(g_i2c_bus_handle);
 
     // 2. Initialize TCA9554 (IO Expander)
     tca9554_init(g_i2c_bus_handle); 
+
+    // Initialize QMI8658C Motion Sensor
+    ret = qmi8658c_init(g_i2c_bus_handle);
+    if (ret == ESP_OK) {
+         ESP_LOGI(TAG, "QMI8658C Initialized");
+    } else {
+         ESP_LOGW(TAG, "QMI8658C Init Failed (Optional)");
+    }
+
+    // Initialize PCF85063A RTC
+    ret = pcf85063a_init(g_i2c_bus_handle);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "RTC Initialized");
+        // Print current time for debug
+        struct tm t;
+        if (pcf85063a_get_time(&t) == ESP_OK) {
+            ESP_LOGI(TAG, "Current RTC Time: %04d-%02d-%02d %02d:%02d:%02d", 
+                     t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+        }
+        // Test RAM
+        pcf85063a_write_ram(0x42);
+        uint8_t ram_val = 0;
+        pcf85063a_read_ram(&ram_val);
+        ESP_LOGI(TAG, "RTC RAM Test: Written 0x42, Read 0x%02X", ram_val);
+    } else {
+        ESP_LOGE(TAG, "RTC Init Failed");
+    }
 
     // 3. Enable Display Power
     ESP_LOGI(TAG, "Enabling Display Power via TCA9554...");
@@ -367,14 +414,39 @@ void ws_241_hal_touch_test_task(void *pvParameters) {
     }
 }
 
+void ws_241_hal_imu_test_task(void *pvParameters) {
+    qmi_data_t imu_data;
+    const TickType_t POLL_DELAY = pdMS_TO_TICKS(500);
+
+    ESP_LOGI(TAG, "IMU Test Task Started");
+
+    while (1) {
+        if (ws_241_hal_get_imu_data(&imu_data) == ESP_OK) {
+            ESP_LOGI(TAG, "IMU: Acc(%.2f, %.2f, %.2f) Gyro(%.2f, %.2f, %.2f)", 
+                     imu_data.acc.x, imu_data.acc.y, imu_data.acc.z,
+                     imu_data.gyro.x, imu_data.gyro.y, imu_data.gyro.z);
+        } else {
+            ESP_LOGW(TAG, "Failed to read IMU data");
+        }
+        vTaskDelay(POLL_DELAY);
+    }
+}
+
 void ws_241_hal_start_touch_test(void) {
     xTaskCreate(ws_241_hal_touch_test_task, "touch_test", 4096, NULL, 5, NULL);
+    // Start IMU monitoring task
+    xTaskCreate(ws_241_hal_imu_test_task, "imu_test", 4096, NULL, 5, NULL);
 }
 
 
 const rm690b0_config_t* ws_241_hal_get_display_config(void) {
     return &g_disp_conf;
 }
+
+esp_err_t ws_241_hal_get_imu_data(qmi_data_t *data) {
+    return qmi8658c_read_data(data);
+}
+
 
 esp_err_t ws_241_hal_set_display_power(bool enable) {
     return tca9554_set_level(TCA_PIN_PWR_EN, enable ? 1 : 0);
@@ -395,6 +467,7 @@ void ws_241_hal_power_off(void) {
     // Just in case power remains (USB connected?), loop forever
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        ESP_LOGI(TAG, "Waiting for power off...");
+        // Verify power state for debug
+        // ESP_LOGI(TAG, "Waiting for power off...");
     }
 }

@@ -25,9 +25,8 @@ esp_err_t ft6336u_init(i2c_master_bus_handle_t bus_handle) {
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = FT6336U_I2C_ADDRESS,
-        .scl_speed_hz = 100000, // 400kHz might be too fast for some clones, try 100 first
+        .scl_speed_hz = 100000, 
     };
-    // Revert to 400k if needed.
 
     esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_cfg, &g_dev_handle);
     if (ret != ESP_OK) {
@@ -39,14 +38,12 @@ esp_err_t ft6336u_init(i2c_master_bus_handle_t bus_handle) {
     uint8_t chip_id = 0;
     uint8_t cmd = 0xA8;
     
-    // Using transmit_receive to read register
     ret = i2c_master_transmit_receive(g_dev_handle, &cmd, 1, &chip_id, 1, -1);
     
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "Initialized FT6336U. Chip ID: 0x%02X", chip_id);
     } else {
         ESP_LOGE(TAG, "Failed to detect FT6336U at 0x%02X", FT6336U_I2C_ADDRESS);
-        // Don't fail completely, maybe it's asleep?
     }
     
     return ESP_OK;
